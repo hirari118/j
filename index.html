@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ふわふわペット育成ゲーム - 永遠のパートナー</title>
+    <style>
+        /* 全体レイアウト */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 40px 0;
+            background: #1a252c;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #fff;
+            gap: 25px;
+        }
+
+        /* 携帯ゲーム機風の赤いレトロなフレーム */
+        .game-console {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: 8px solid #962d22;
+            border-radius: 40px 40px 55px 55px;
+            box-shadow: 0 20px 0 #111, 0 25px 30px rgba(0,0,0,0.5);
+            padding: 25px;
+            width: 340px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .brand-title {
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            color: #f1c40f;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+        }
+
+        /* 液晶画面の外枠 */
+        .screen-bezel {
+            background: #2c3e50;
+            border: 6px solid #1a252f;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.5);
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 128x128ピクセルをくっきり液晶風に拡大表示するCanvas */
+        canvas {
+            background-color: #8fa382; 
+            border: 3px solid #55614e;
+            width: 240px;
+            height: 240px;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            box-shadow: inset 3px 3px 5px rgba(0,0,0,0.3);
+        }
+
+        /* 画面下部の日本語2D UIコンテナ */
+        .action-ui-container {
+            width: 100%;
+            margin-top: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            gap: 12px;
+        }
+
+        .action-btn-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        /* レトロゲーム風デジタルボタン */
+        .action-pixel-btn {
+            width: 100%;
+            max-width: 65px;
+            aspect-ratio: 1 / 1;
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            border: 3px solid #1a252f;
+            border-radius: 12px;
+            box-shadow: inset -3px -3px 0px rgba(0,0,0,0.2), 0 4px 0px #111;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: #fff;
+            transition: all 0.05s ease;
+            outline: none;
+        }
+
+        .action-pixel-btn:active {
+            transform: translateY(4px);
+            box-shadow: inset -1px -1px 0px rgba(0,0,0,0.2), 0 0px 0px #111;
+        }
+
+        .action-btn-label {
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 6px;
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
+            text-align: center;
+        }
+
+        /* 補助用物理ボタン */
+        .button-pad {
+            display: flex;
+            justify-content: space-between;
+            width: 85%;
+            margin-bottom: 10px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 15px;
+        }
+
+        .btn-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 50px;
+        }
+
+        .physical-btn {
+            width: 36px;
+            height: 36px;
+            background: #f1c40f;
+            border: 3px solid #d4ac0d;
+            border-radius: 50%;
+            box-shadow: 0 3px 0 #b7950b, 0 4px 6px rgba(0,0,0,0.4);
+            cursor: pointer;
+            outline: none;
+            transition: all 0.05s ease;
+        }
+
+        .physical-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 0px 0 #b7950b, 0 1px 3px rgba(0,0,0,0.4);
+        }
+
+        .btn-label {
+            font-size: 10px;
+            font-weight: bold;
+            margin-top: 4px;
+            color: #fff;
+        }
+
+        .system-info {
+            margin-top: 15px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            text-align: center;
+            width: 100%;
+        }
+        .reset-lnk {
+            color: #ffaa66;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        /* 外側の設定・カウンターパネル */
+        .custom-panel {
+            background: #2c3e50;
+            border: 4px solid #34495e;
+            border-radius: 20px;
+            padding: 20px;
+            width: 340px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel-section-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #f1c40f;
+            border-bottom: 2px solid #34495e;
+            padding-bottom: 4px;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+
+        .setting-row {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .setting-row label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+
+        /* 入力欄（テキストボックス） */
+        .custom-input-text {
+            background: #1a252c;
+            border: 2px solid #34495e;
+            border-radius: 8px;
+            color: #fff;
+            padding: 8px 10px;
+            font-size: 12px;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        .custom-input-text:focus {
+            border-color: #e74c3c;
+        }
+
+        /* カウンター表示枠 */
+        .counter-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .counter-box {
+            background: #1a252c;
+            border: 2px solid #34495e;
+            border-radius: 10px;
+            padding: 10px 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .counter-title {
+            font-size: 10px;
+            color: #bdc3c7;
+            font-weight: bold;
+        }
+
+        .counter-display-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            justify-content: center;
+        }
+
+        /* カウンターの数字表示（inputからdivに変更してキーボード暴発を完全ブロック） */
+        .custom-counter-value {
+            color: #f1c40f;
+            font-size: 18px;
+            font-weight: bold;
+            font-family: monospace;
+            text-align: right;
+            min-width: 30px;
+        }
+
+        .counter-unit {
+            font-size: 11px;
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-console">
+        <div class="brand-title">DIGI-PET 2D</div>
+        
+        <div class="screen-bezel">
+            <canvas id="petCanvas" width="128" height="128"></canvas>
+        </div>
+
+        <div class="action-ui-container">
+            <div class="action-btn-wrapper">
+                <button class="action-pixel-btn" id="webBtnFood">🍖</button>
+                <div class="action-btn-label">ごはん</div>
+            </div>
+            <div class="action-btn-wrapper">
+                <button class="action-pixel-btn" id="webBtnBath">🛁</button>
+                <div class="action-btn-label">お風呂</div>
+            </div>
+            <div class="action-btn-wrapper">
+                <button class="action-pixel-btn" id="webBtnClean">🧹</button>
+                <div class="action-btn-label">掃除</div>
+            </div>
+        </div>
+
+        <div class="button-pad">
+            <div class="btn-wrapper">
+                <button class="physical-btn" id="btnA"></button>
+                <div class="btn-label">ステータス</div>
+            </div>
+            <div class="btn-wrapper">
+                <button class="physical-btn" id="btnB"></button>
+                <div class="btn-label">決定</div>
+            </div>
+            <div class="btn-wrapper">
+                <button class="physical-btn" id="btnC"></button>
+                <div class="btn-label">もどる</div>
+            </div>
+        </div>
+
+        <div class="system-info">
+            <span id="timeLog">いつでもいっしょ</span><br>
+            <span class="reset-lnk" id="resetBtn">データを初期化する</span>
+        </div>
+    </div>
+
+
+    <div class="custom-panel">
+        
+        <h3 class="panel-section-title">📛 キャラクターの名前設定</h3>
+        <div class="setting-row">
+            <input type="text" id="txtPetName" class="custom-input-text" value="ふわふわ" maxlength="10">
+        </div>
+
+        <h3 class="panel-section-title">📊 お世話カウンター（自動カウント）</h3>
+        <div class="counter-grid">
+            <div class="counter-box">
+                <span class="counter-title">ごはん</span>
+                <div class="counter-display-wrapper">
+                    <span id="valCountFood" class="custom-counter-value">0</span>
+                    <span class="counter-unit">枚</span>
+                </div>
+            </div>
+            <div class="counter-box">
+                <span class="counter-title">お風呂</span>
+                <div class="counter-display-wrapper">
+                    <span id="valCountBath" class="custom-counter-value">0</span>
+                    <span class="counter-unit">枚</span>
+                </div>
+            </div>
+            <div class="counter-box">
+                <span class="counter-title">お掃除</span>
+                <div class="counter-display-wrapper">
+                    <span id="valCountClean" class="custom-counter-value">0</span>
+                    <span class="counter-unit">枚</span>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="panel-section-title">💬 キャラクターのセリフ設定</h3>
+        <div class="setting-row">
+            <label for="txtFoodMsg">🍖 ごはんの後のセリフ</label>
+            <input type="text" id="txtFoodMsg" class="custom-input-text" value="もぐもぐ！おいしい！">
+        </div>
+        <div class="setting-row">
+            <label for="txtBathMsg">🛁 お風呂の後のセリフ</label>
+            <input type="text" id="txtBathMsg" class="custom-input-text" value="ピカピカ！きもちいい">
+        </div>
+        <div class="setting-row">
+            <label for="txtCleanMsg">🧹 掃除の後のセリフ</label>
+            <input type="text" id="txtCleanMsg" class="custom-input-text" value="おそうじ完了！スッキリ">
+        </div>
+
+    </div>
+
+<script>
+const canvas = document.getElementById('petCanvas');
+const ctx = canvas.getContext('2d');
+
+const WIDTH = 128;
+const HEIGHT = 128;
+
+const COLOR_DARK = '#2b3623';  
+const COLOR_LIGHT = '#8fa382'; 
+
+// --- ローカル画像（pet.png）の自動読み込み ---
+let isImageLoaded = false;
+let isImageError = false;
+const petImg = new Image();
+
+petImg.onload = () => { isImageLoaded = true; };
+petImg.onerror = () => { isImageError = true; };
+petImg.src = 'pet.png';
+
+const SPRITE_FALLBACK_PET = [
+    [0,0,0,1,1,1,1,1,1,0,0,0],
+    [0,0,1,1,0,0,0,0,1,1,0,0],
+    [0,1,1,0,0,0,0,0,0,1,1,0],
+    [1,1,0,0,1,0,0,1,0,0,1,1],
+    [1,1,0,0,0,0,0,0,0,0,1,1],
+    [1,1,0,1,0,0,0,0,1,0,1,1],
+    [0,1,1,0,1,1,1,1,0,1,1,0],
+    [0,0,1,1,1,0,0,1,1,1,0,0],
+    [0,0,0,1,1,1,1,1,1,0,0,0]
+];
+
+const SPRITE_POOP = [
+    [0,0,0,1,1,0,0,0],
+    [0,0,1,0,0,1,0,0],
+    [0,1,1,1,1,1,1,0],
+    [0,1,0,0,0,0,1,0],
+    [1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1],
+    [0,0,0,0,0,0,0,0]
+];
+
+let pet = {
+    name: "ふわふわ",
+    hunger: 50,
+    happiness: 50,
+    cleanliness: 100,
+    age: 0,
+    weight: 5,
+    isSick: false,
+    poopCount: 0,
+    x: 43,
+    y: 48,        
+    size: 44,      
+    state: 'idle', 
+    direction: 1,  
+    walkTargetX: 43,
+    nextAiDecisionTime: 0,
+    lastTickTime: Date.now(),
+    counters: { food: 0, bath: 0, clean: 0 },
+    customPhrases: {
+        food: "もぐもぐ！おいしい！",
+        bath: "ピカピカ！きもちいい",
+        clean: "おそうじ完了！スッキリ"
+    }
+};
+
+let currentScreen = 'main'; 
+let meterPage = 0;
+let messageTimer = 0;
+let messageText = '';
+
+// UI要素の取得
+const txtPetName = document.getElementById('txtPetName');
+const valCountFood = document.getElementById('valCountFood');
+const valCountBath = document.getElementById('valCountBath');
+const valCountClean = document.getElementById('valCountClean');
+const txtFoodMsg = document.getElementById('txtFoodMsg');
+const txtBathMsg = document.getElementById('txtBathMsg');
+const txtCleanMsg = document.getElementById('txtCleanMsg');
+
+// --- セーブ＆ロードシステム ---
+function saveData() {
+    pet.name = txtPetName.value || "ふわふわ";
+    
+    if(!pet.counters) pet.counters = { food: 0, bath: 0, clean: 0 };
+    pet.counters.food = parseInt(valCountFood.innerText) || 0;
+    pet.counters.bath = parseInt(valCountBath.innerText) || 0;
+    pet.counters.clean = parseInt(valCountClean.innerText) || 0;
+
+    if(!pet.customPhrases) pet.customPhrases = { food: "もぐもぐ！", bath: "ピカピカ！", clean: "スッキリ！" };
+    pet.customPhrases.food = txtFoodMsg.value;
+    pet.customPhrases.bath = txtBathMsg.value;
+    pet.customPhrases.clean = txtCleanMsg.value;
+
+    const saveData = { pet: pet, saveTime: Date.now() };
+    localStorage.setItem('fluffy_pet_safe_v8', JSON.stringify(saveData));
+}
+
+function loadData() {
+    const local = localStorage.getItem('fluffy_pet_safe_v8');
+    if (!local) {
+        saveData();
+        return;
+    }
+    try {
+        const data = JSON.parse(local);
+        if (!data.pet) return;
+        
+        const savedPet = data.pet;
+        pet.name = savedPet.name || "ふわふわ";
+        pet.hunger = typeof savedPet.hunger === 'number' ? savedPet.hunger : 50;
+        pet.happiness = typeof savedPet.happiness === 'number' ? savedPet.happiness : 50;
+        pet.cleanliness = typeof savedPet.cleanliness === 'number' ? savedPet.cleanliness : 100;
+        pet.age = savedPet.age || 0;
+        pet.weight = savedPet.weight || 5;
+        pet.isSick = !!savedPet.isSick;
+        pet.poopCount = savedPet.poopCount || 0;
+        
+        if(savedPet.counters) {
+            pet.counters.food = savedPet.counters.food || 0;
+            pet.counters.bath = savedPet.counters.bath || 0;
+            pet.counters.clean = savedPet.counters.clean || 0;
+        }
+        if(savedPet.customPhrases) {
+            pet.customPhrases.food = savedPet.customPhrases.food || "もぐもぐ！おいしい！";
+            pet.customPhrases.bath = savedPet.customPhrases.bath || "ピカピカ！きもちいい";
+            pet.customPhrases.clean = savedPet.customPhrases.clean || "おそうじ完了！スッキリ";
+        }
+
+        // 時間経過
+        const elapsedSec = Math.floor((Date.now() - data.saveTime) / 1000);
+        if (elapsedSec > 0) {
+            pet.hunger = Math.max(0, pet.hunger - Math.floor(elapsedSec / 120));
+            pet.happiness = Math.max(0, pet.happiness - Math.floor(elapsedSec / 180));
+            if (Math.random() < 0.05) pet.poopCount = Math.min(4, pet.poopCount + 1);
+            pet.age += Math.floor(elapsedSec / 3600);
+        }
+
+        // 表示に反映
+        txtPetName.value = pet.name;
+        valCountFood.innerText = pet.counters.food;
+        valCountBath.innerText = pet.counters.bath;
+        valCountClean.innerText = pet.counters.clean;
+        txtFoodMsg.value = pet.customPhrases.food;
+        txtBathMsg.value = pet.customPhrases.bath;
+        txtCleanMsg.value = pet.customPhrases.clean;
+
+        document.getElementById('timeLog').innerText = `留守中の経過: ${elapsedSec} 秒`;
+    } catch(e) {
+        console.error("復旧読み込み", e);
+        saveData(); 
+    }
+}
+
+// --- 画面描画 ---
+function clearScreen() {
+    ctx.fillStyle = COLOR_LIGHT; 
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+}
+
+function drawBitmap(bitmap, startX, startY) {
+    ctx.fillStyle = COLOR_DARK;
+    for (let r = 0; r < bitmap.length; r++) {
+        for (let c = 0; c < bitmap[r].length; c++) {
+            if (bitmap[r][c] === 1) {
+                ctx.fillRect(Math.floor(startX + c), Math.floor(startY + r), 1, 1);
+            }
+        }
+    }
+}
+
+function drawText(text, x, y) {
+    ctx.fillStyle = COLOR_DARK;
+    ctx.font = "bold 9px monospace";
+    ctx.fillText(text, x, y);
+}
+
+// --- 自律移動AI ---
+function updateAI() {
+    let now = Date.now();
+
+    if (now - pet.lastTickTime > 4000) {
+        pet.hunger = Math.max(0, pet.hunger - 1);
+        pet.happiness = Math.max(0, pet.happiness - 1);
+        if (Math.random() < 0.02 && pet.poopCount < 4) {
+            pet.poopCount++;
+        }
+        pet.cleanliness = Math.max(0, 100 - (pet.poopCount * 25));
+        pet.lastTickTime = now;
+        saveData();
+    }
+
+    if (now > pet.nextAiDecisionTime) {
+        if (pet.state === 'idle') {
+            if (Math.random() < 0.6) {
+                pet.state = 'walk';
+                pet.walkTargetX = Math.floor(Math.random() * (WIDTH - pet.size - 14)) + 7;
+                pet.direction = pet.walkTargetX > pet.x ? 1 : -1;
+            }
+        } else if (pet.state === 'walk') {
+            pet.state = 'idle';
+        }
+        pet.nextAiDecisionTime = now + (Math.random() * 3000 + 2000);
+    }
+
+    if (pet.state === 'walk') {
+        let walkSpeed = 0.45;
+        if (Math.abs(pet.x - pet.walkTargetX) > walkSpeed) {
+            pet.x += pet.direction * walkSpeed;
+        } else {
+            pet.x = pet.walkTargetX;
+            pet.state = 'idle';
+        }
+    }
+}
+
+function render() {
+    clearScreen();
+
+    if (currentScreen === 'main') {
+        ctx.strokeStyle = COLOR_DARK;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, 93);
+        ctx.lineTo(WIDTH, 93);
+        ctx.stroke();
+
+        for (let i = 0; i < pet.poopCount; i++) {
+            drawBitmap(SPRITE_POOP, 100 - (i * 12), 85);
+        }
+
+        if (isImageLoaded && !isImageError) {
+            try {
+                ctx.save();
+                if (pet.direction === -1) {
+                    ctx.translate(pet.x + pet.size, pet.y);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(petImg, 0, 0, pet.size, pet.size);
+                } else {
+                    ctx.drawImage(petImg, pet.x, pet.y, pet.size, pet.size);
+                }
+                ctx.restore();
+            } catch(e) {
+                drawBitmap(SPRITE_FALLBACK_PET, pet.x + 14, pet.y + 15);
+            }
+        } else {
+            drawBitmap(SPRITE_FALLBACK_PET, pet.x + 14, pet.y + 15);
+        }
+
+        if (pet.isSick) {
+            drawText("💧", pet.x + 2, pet.y + 6);
+        }
+
+        if (messageTimer > 0) {
+            ctx.fillStyle = COLOR_LIGHT;
+            ctx.fillRect(6, 6, 116, 18);
+            ctx.strokeStyle = COLOR_DARK;
+            ctx.strokeRect(6, 6, 116, 18);
+            drawText(messageText, 11, 18);
+            messageTimer--;
+        }
+
+    } else if (currentScreen === 'meter') {
+        drawText("=== じょうたい ===", 16, 22);
+        if (meterPage === 0) {
+            drawText(`なまえ: ${pet.name}`, 20, 45);
+            drawText(`ねんれい: ${pet.age} さい`, 20, 65);
+            drawText(`たいじゅう: ${pet.weight} kg`, 20, 85);
+            drawText("▶ボタンで つぎへ", 20, 110);
+        } else {
+            drawText(`おなか:  ${pet.hunger} / 100`, 20, 48);
+            drawText(`ごきげん: ${pet.happiness} / 100`, 20, 68);
+            drawText(`せいけつ: ${pet.cleanliness} / 100`, 20, 88);
+        }
+    }
+}
+
+function triggerMessage(text) {
+    messageText = text;
+    messageTimer = 75; 
+}
+
+// --- ボタンイベント（自動で数値を安全に加算） ---
+document.getElementById('webBtnFood').addEventListener('click', () => {
+    pet.hunger = Math.min(100, pet.hunger + 30);
+    pet.weight = Math.min(99, pet.weight + 1);
+    
+    let currentVal = parseInt(valCountFood.innerText) || 0;
+    valCountFood.innerText = currentVal + 1;
+
+    triggerMessage(txtFoodMsg.value || "もぐもぐ！");
+    saveData();
+});
+
+document.getElementById('webBtnBath').addEventListener('click', () => {
+    pet.happiness = Math.min(100, pet.happiness + 25);
+    if (pet.isSick) pet.isSick = false; 
+
+    let currentVal = parseInt(valCountBath.innerText) || 0;
+    valCountBath.innerText = currentVal + 1;
+
+    triggerMessage(txtBathMsg.value || "ピカピカ！");
+    saveData();
+});
+
+document.getElementById('webBtnClean').addEventListener('click', () => {
+    let currentVal = parseInt(valCountClean.innerText) || 0;
+    valCountClean.innerText = currentVal + 1;
+
+    if (pet.poopCount > 0) {
+        pet.poopCount = 0;
+        pet.cleanliness = 100;
+    }
+    triggerMessage(txtCleanMsg.value || "キレイ！");
+    saveData();
+});
+
+// 入力イベント（名前とセリフだけリアルタイム保存）
+const inputsArray = [txtPetName, txtFoodMsg, txtBathMsg, txtCleanMsg];
+inputsArray.forEach(element => {
+    element.addEventListener('input', () => {
+        saveData();
+    });
+});
+
+// 物理ボタン
+document.getElementById('btnA').addEventListener('click', () => {
+    if (currentScreen === 'main') {
+        currentScreen = 'meter';
+        meterPage = 0;
+    } else {
+        meterPage = (meterPage + 1) % 2;
+    }
+});
+document.getElementById('btnB').addEventListener('click', () => {
+    if (currentScreen === 'meter') {
+        meterPage = (meterPage + 1) % 2;
+    }
+});
+document.getElementById('btnC').addEventListener('click', () => {
+    currentScreen = 'main'; 
+});
+
+// 初期化ボタン
+document.getElementById('resetBtn').addEventListener('click', () => {
+    if(confirm("すべて初期化しますか？")) {
+        localStorage.removeItem('fluffy_pet_safe_v8');
+        location.reload(); 
+    }
+});
+
+// 起動
+loadData();
+function gameLoop() {
+    updateAI();
+    render();
+    requestAnimationFrame(gameLoop);
+}
+gameLoop();
+</script>
+</body>
+</html>
